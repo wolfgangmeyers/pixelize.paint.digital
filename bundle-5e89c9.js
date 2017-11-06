@@ -561,6 +561,7 @@ var fileio = __webpack_require__(10);
 var colors = __webpack_require__(3);
 var libraries = __webpack_require__(13);
 var d3 = __webpack_require__(4);
+var displayCanvasWidth = 4000;
 /**
  * This is the wrapper application element. If this application
  * ever needs to support multiple pages, that
@@ -580,15 +581,9 @@ var App = (function (_super) {
             canvasWidth: 100,
             canvasHeight: 100,
             aspectRatio: 1,
+            displayGrid: true,
         });
     };
-    // updateCanvas() {
-    //     const ctx = this.refs.canvas.getContext('2d');
-    //     ctx.clearRect(0,0, 300, 300);
-    //     // draw children “components”
-    //     rect({ctx, x: 10, y: 10, width: 50, height: 50});
-    //     rect({ctx, x: 110, y: 110, width: 50, height: 50});
-    // }
     App.prototype.updateWidth = function (evt) {
         var width = parseInt(evt.target.value);
         var height = Math.floor(width / this.state.aspectRatio);
@@ -605,7 +600,27 @@ var App = (function (_super) {
             width: width,
         });
     };
-    App.prototype.drawImage = function () {
+    App.prototype.disableSmoothing = function (ctx) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.webkitImageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false;
+    };
+    App.prototype.sortCounts = function (counts) {
+        var result = [];
+        Object.keys(counts).forEach(function (key) {
+            var color = libraries.herrschners.getColor(key);
+            result.push({
+                code: color.code,
+                name: color.name,
+                count: counts[key],
+            });
+        });
+        result.sort(function (a, b) { return a.count - b.count; });
+        // Order by highest first
+        result.reverse();
+        return result;
+    };
+    App.prototype.pixelizeImage = function () {
         var _this = this;
         var ctx = this.canvas.getContext("2d");
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -615,34 +630,83 @@ var App = (function (_super) {
                 canvasHeight: _this.state.height,
             });
             var ctx = _this.canvas.getContext("2d");
-            ctx.imageSmoothingEnabled = false;
-            ctx.webkitImageSmoothingEnabled = false;
-            ctx.mozImageSmoothingEnabled = false;
+            _this.disableSmoothing(ctx);
             ctx.drawImage(_this.img, 0, 0, _this.state.width, _this.state.height);
             var imgData = ctx.getImageData(0, 0, _this.state.width, _this.state.height);
             var counts = {};
+            var pixelCodes = [];
             for (var i = 0; i < imgData.data.length; i += 4) {
                 var r = imgData.data[i];
                 var g = imgData.data[i + 1];
                 var b = imgData.data[i + 2];
                 var hex = colors.rgbToHex(r, g, b);
                 var closest = libraries.herrschners.closestMatch(hex);
+                pixelCodes.push(closest.code);
                 // console.log(closest.name);
-                if (!counts[closest.name]) {
-                    counts[closest.name] = 0;
+                if (!counts[closest.code]) {
+                    counts[closest.code] = 0;
                 }
-                counts[closest.name]++;
+                counts[closest.code]++;
                 var clr = d3.rgb(closest.code);
                 imgData.data[i] = clr.r;
                 imgData.data[i + 1] = clr.g;
                 imgData.data[i + 2] = clr.b;
             }
             ctx.putImageData(imgData, 0, 0, 0, 0, _this.state.width, _this.state.height);
-            Object.keys(counts).forEach(function (key) {
-                console.log(key + ": " + counts[key]);
-            });
+            // TODO: set state for key
+            // draw small image on larger canvas
+            var displayCanvasHeight = displayCanvasWidth / _this.state.aspectRatio;
+            ctx = _this.displayCanvas.getContext("2d");
+            ctx.clearRect(0, 0, _this.displayCanvas.width, _this.displayCanvas.height);
+            _this.disableSmoothing(ctx);
+            ctx.drawImage(_this.canvas, 0, 0, displayCanvasWidth, displayCanvasHeight);
+            // draw gridlines
+            ctx.strokeStyle = "#000000";
+            var cellWidth = displayCanvasWidth / _this.state.canvasWidth;
+            var cellHeight = displayCanvasHeight / _this.state.canvasHeight;
+            // color key
+            var colorKey = _this.sortCounts(counts);
+            if (_this.state.displayGrid) {
+                for (var x = 0; x < _this.state.canvasWidth; x++) {
+                    ctx.beginPath();
+                    ctx.moveTo(x * cellWidth, 0);
+                    ctx.lineTo(x * cellWidth, displayCanvasHeight);
+                    ctx.stroke();
+                }
+                for (var y = 0; y < _this.state.canvasHeight; y++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y * cellHeight);
+                    ctx.lineTo(displayCanvasHeight, y * cellHeight);
+                    ctx.stroke();
+                }
+                // quickly map hex code to key number
+                var colorKeyMap_1 = {};
+                colorKey.forEach(function (colorCount, i) {
+                    colorKeyMap_1[colorCount.code] = "" + (i + 1);
+                });
+                // draw numbers on each grid cell
+                ctx.font = _this.state.canvasWidth > 60 ? "24px Arial" : "36px Arial";
+                for (var y = 0; y < _this.state.canvasHeight; y++) {
+                    for (var x = 0; x < _this.state.canvasHeight; x++) {
+                        var cellIndex = (y * _this.state.canvasWidth) + x;
+                        var cellHex = pixelCodes[cellIndex];
+                        var displayKey = "" + colorKeyMap_1[cellHex];
+                        ctx.fillStyle = "#000000";
+                        ctx.strokeStyle = "#FFFFFF";
+                        ctx.beginPath();
+                        ctx.strokeText(displayKey, cellWidth * x + (cellWidth / 3), cellHeight * y + (cellHeight / 1.5));
+                        ctx.fillText(displayKey, cellWidth * x + (cellWidth / 3), cellHeight * y + (cellHeight / 1.5));
+                        ctx.stroke();
+                    }
+                }
+            }
+            // ctx.fillText("1", cellWidth / 2, cellHeight / 2);
+            // Object.keys(counts).forEach(key => {
+            //     console.log(key + ": " + counts[key]);
+            // });
             _this.setState({
                 imagePixelized: true,
+                colorKey: colorKey,
             });
         }, 100);
     };
@@ -664,6 +728,15 @@ var App = (function (_super) {
             }, 100);
         });
     };
+    App.prototype.handleDisplayGridChange = function (evt) {
+        var _this = this;
+        this.setState({
+            displayGrid: evt.target.checked,
+        });
+        setTimeout(function () {
+            _this.pixelizeImage();
+        }, 100);
+    };
     App.prototype.renderPixelizer = function () {
         var _this = this;
         if (this.state.imageLoaded) {
@@ -679,14 +752,19 @@ var App = (function (_super) {
                         React.createElement("input", { type: "number", className: "form-control", id: "inputEmail3", placeholder: "100", value: this.state.height, onChange: this.updateHeight.bind(this) }))),
                 React.createElement("div", { className: "form-group" },
                     React.createElement("div", { className: "col-sm-offset-2 col-sm-3" },
-                        React.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { return _this.drawImage(); } }, "Go!"))));
+                        React.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { return _this.pixelizeImage(); } }, "Go!"),
+                        "\u00A0",
+                        React.createElement("input", { type: "checkbox", checked: this.state.displayGrid, onChange: function (evt) { return _this.handleDisplayGridChange(evt); } }),
+                        " Display Grid")));
         }
     };
     App.prototype.renderCanvas = function () {
         var _this = this;
         if (this.state.imageLoaded) {
+            var displayCanvasHeight = displayCanvasWidth / this.state.aspectRatio;
             var canvasStyle = this.state.imagePixelized ? { width: "100%" } : { display: "none" };
-            return React.createElement("canvas", { onClick: function (evt) { }, className: "pixelizer-canvas", style: canvasStyle, ref: function (ref) { _this.canvas = ref; }, width: this.state.canvasWidth, height: this.state.canvasHeight });
+            return [React.createElement("canvas", { className: "pixelizer-canvas", style: { display: "none" }, ref: function (ref) { _this.canvas = ref; }, width: this.state.canvasWidth, height: this.state.canvasHeight }),
+                React.createElement("canvas", { className: "pixelizer-canvas", style: canvasStyle, ref: function (ref) { return _this.displayCanvas = ref; }, width: displayCanvasWidth, height: displayCanvasHeight })];
         }
     };
     App.prototype.renderLoader = function () {
@@ -695,13 +773,41 @@ var App = (function (_super) {
         return [React.createElement("input", { type: "file", onChange: function (evt) { return _this.onOpenFile(evt); } }), React.createElement("hr", null)];
         // }
     };
+    App.prototype.renderColorKey = function () {
+        if (this.state.colorKey) {
+            return React.createElement("div", { className: "row" },
+                React.createElement("div", { className: "col-lg-12" },
+                    React.createElement("div", { className: "block-flat" },
+                        React.createElement("div", { className: "header" },
+                            React.createElement("h3", null, "Color Key")),
+                        React.createElement("div", { className: "content" },
+                            React.createElement("table", null,
+                                React.createElement("tr", null,
+                                    React.createElement("th", null, "Key"),
+                                    React.createElement("th", null, "Color Name"),
+                                    React.createElement("th", null, "Count")),
+                                this.state.colorKey.map(function (colorInfo, i) {
+                                    var style = {
+                                        background: colorInfo.code,
+                                        color: colorInfo.code,
+                                    };
+                                    return React.createElement("tr", { key: colorInfo.code },
+                                        React.createElement("td", null, i + 1),
+                                        React.createElement("td", null,
+                                            React.createElement("span", { style: style }, "___"),
+                                            "\u00A0\u00A0",
+                                            colorInfo.name),
+                                        React.createElement("td", null, colorInfo.count));
+                                }),
+                                ";")))));
+        }
+    };
     App.prototype.render = function () {
         var _this = this;
         var imageStyle = this.state.imagePixelized ? { display: "none" } : { width: "100%" };
         return React.createElement("div", { className: "cl-mcont" },
             React.createElement("div", { className: "row" },
-                React.createElement("div", { className: "col-lg-3 col-md-2 col-sm-1 col-xs-12" }),
-                React.createElement("div", { className: "col-lg-4 col-md-8 col-sm-10 col-xs-12" },
+                React.createElement("div", { className: "col-lg-12" },
                     React.createElement("div", { className: "block-flat" },
                         React.createElement("div", { className: "header" },
                             React.createElement("h3", null, "Pixelizer")),
@@ -709,8 +815,8 @@ var App = (function (_super) {
                             this.renderLoader(),
                             this.renderPixelizer(),
                             React.createElement("img", { ref: function (ref) { return _this.img = ref; }, style: imageStyle }),
-                            this.renderCanvas()))),
-                React.createElement("div", { className: "col-lg-3 col-md-2 col-sm-1 col-xs-12" })));
+                            this.renderCanvas())))),
+            this.renderColorKey());
     };
     return App;
 }(React.Component));
@@ -996,6 +1102,12 @@ var ColorLibrary = (function () {
             name: this.colorMap[bestCode],
         };
     };
+    ColorLibrary.prototype.getColor = function (hexColor) {
+        return {
+            code: hexColor,
+            name: this.colorMap[hexColor],
+        };
+    };
     return ColorLibrary;
 }());
 exports.ColorLibrary = ColorLibrary;
@@ -1089,4 +1201,4 @@ module.exports = __webpack_require__.p + "img/logo.png";
 
 /***/ })
 /******/ ]);
-//# sourceMappingURL=bundle-ceeaa5.js.map
+//# sourceMappingURL=bundle-5e89c9.js.map
