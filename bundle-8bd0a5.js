@@ -677,7 +677,7 @@ var App = (function (_super) {
                 for (var y = 0; y < _this.state.canvasHeight; y++) {
                     ctx.beginPath();
                     ctx.moveTo(0, y * cellHeight);
-                    ctx.lineTo(displayCanvasHeight, y * cellHeight);
+                    ctx.lineTo(displayCanvasWidth, y * cellHeight);
                     ctx.stroke();
                 }
                 // quickly map hex code to key number
@@ -688,7 +688,7 @@ var App = (function (_super) {
                 // draw numbers on each grid cell
                 ctx.font = _this.state.canvasWidth > 60 ? "24px Arial" : "36px Arial";
                 for (var y = 0; y < _this.state.canvasHeight; y++) {
-                    for (var x = 0; x < _this.state.canvasHeight; x++) {
+                    for (var x = 0; x < _this.state.canvasWidth; x++) {
                         var cellIndex = (y * _this.state.canvasWidth) + x;
                         var cellHex = pixelCodes[cellIndex];
                         var displayKey = "" + colorKeyMap_1[cellHex];
@@ -1434,4 +1434,4 @@ module.exports = __webpack_require__.p + "img/logo.png";
 
 /***/ })
 /******/ ]);
-//# sourceMappingURL=bundle-16c0df.js.map
+//# sourceMappingURL=bundle-8bd0a5.js.map
