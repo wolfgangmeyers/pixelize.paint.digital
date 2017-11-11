@@ -739,7 +739,7 @@ var App = (function (_super) {
         this.setState({
             displayGrid: evt.target.checked,
         });
-        if (this.state.imageLoaded) {
+        if (this.state.imagePixelized) {
             setTimeout(function () {
                 _this.pixelizeImage();
             }, 100);
@@ -1433,4 +1433,4 @@ module.exports = __webpack_require__.p + "img/logo.png";
 
 /***/ })
 /******/ ]);
-//# sourceMappingURL=bundle-232f4b.js.map
+//# sourceMappingURL=bundle-111c4c.js.map
