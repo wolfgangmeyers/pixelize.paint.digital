@@ -818,8 +818,7 @@ var App = (function (_super) {
                                             "\u00A0\u00A0",
                                             colorInfo.name),
                                         React.createElement("td", null, colorInfo.count));
-                                }),
-                                ";")))));
+                                }))))));
         }
     };
     App.prototype.render = function () {
@@ -1434,4 +1433,4 @@ module.exports = __webpack_require__.p + "img/logo.png";
 
 /***/ })
 /******/ ]);
-//# sourceMappingURL=bundle-8bd0a5.js.map
+//# sourceMappingURL=bundle-232f4b.js.map
