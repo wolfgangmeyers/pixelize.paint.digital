@@ -713,10 +713,17 @@ var App = (function (_super) {
     };
     App.prototype.onOpenFile = function (evt) {
         var _this = this;
+        var filename;
+        if (evt.target.value) {
+            filename = evt.target.value.split(/(\\|\/)/g).pop();
+        }
+        var parts = filename.split(".");
+        filename = parts.slice(0, parts.length - 1).join(".") + ".pixelized.png";
         this.setState({
             imageLoaded: false,
             imagePixelized: false,
             colorKey: null,
+            filename: filename,
         });
         fileio.uploadFile(evt).then(function (data) {
             _this.img.src = data;
@@ -746,8 +753,9 @@ var App = (function (_super) {
         }
     };
     App.prototype.downloadImage = function () {
-        this.canvas.toBlob(function (blob) {
-            FileSaver.saveAs(blob, "pixelized.png");
+        var _this = this;
+        this.displayCanvas.toBlob(function (blob) {
+            FileSaver.saveAs(blob, _this.state.filename);
         });
     };
     App.prototype.renderPixelizer = function () {
@@ -1433,4 +1441,4 @@ module.exports = __webpack_require__.p + "img/logo.png";
 
 /***/ })
 /******/ ]);
-//# sourceMappingURL=bundle-90c57d.js.map
+//# sourceMappingURL=bundle-0dfce6.js.map
