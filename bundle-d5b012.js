@@ -712,6 +712,11 @@ var App = (function (_super) {
     };
     App.prototype.onOpenFile = function (evt) {
         var _this = this;
+        this.setState({
+            imageLoaded: false,
+            imagePixelized: false,
+            colorKey: null,
+        });
         fileio.uploadFile(evt).then(function (data) {
             _this.img.src = data;
             setTimeout(function () {
@@ -733,9 +738,11 @@ var App = (function (_super) {
         this.setState({
             displayGrid: evt.target.checked,
         });
-        setTimeout(function () {
-            _this.pixelizeImage();
-        }, 100);
+        if (this.state.imageLoaded) {
+            setTimeout(function () {
+                _this.pixelizeImage();
+            }, 100);
+        }
     };
     App.prototype.renderPixelizer = function () {
         var _this = this;
@@ -1201,4 +1208,4 @@ module.exports = __webpack_require__.p + "img/logo.png";
 
 /***/ })
 /******/ ]);
-//# sourceMappingURL=bundle-5e89c9.js.map
+//# sourceMappingURL=bundle-d5b012.js.map
